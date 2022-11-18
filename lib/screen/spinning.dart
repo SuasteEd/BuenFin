@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:developer';
+import 'dart:io';
+import 'dart:isolate';
 import 'package:camera/camera.dart';
-import 'package:demo/models/user.dart';
-import 'package:demo/repository/data_repository.dart';
+import 'package:demo/constants.dart';
+import 'package:demo/screen/home_page.dart';
 import 'package:demo/widgets/conffeti.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +13,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:rflutter_alert/rflutter_alert.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Spinning extends StatefulWidget {
   final int genero;
@@ -32,20 +35,23 @@ class Spinning extends StatefulWidget {
 }
 
 class _SpinningState extends State<Spinning> {
+  String error = '';
+  bool isCount = false;
+  late SharedPreferences logindata;
   final uri = Uri.parse(
-      'https://enersisuat.azurewebsites.net/api/Promocion/DinamicaRuleta');
+      'https://enersis.azurewebsites.net/api/Promocion/DinamicaRuleta');
   List<CameraDescription> _cameras = [];
-  final String desc = 'vacío';
+  String desc = '';
   String imagen = '';
   double dato = 0.0;
   XFile? imageFile;
-  Repository repo = Repository();
   late CameraController _controller;
   final GlobalKey<ScaffoldMessengerState> key =
       GlobalKey<ScaffoldMessengerState>();
   final selected = BehaviorSubject<int>();
   String rewards = '';
   int count = 1;
+  String token = '';
   List<int> items = [
     21,
     22,
@@ -85,7 +91,15 @@ class _SpinningState extends State<Spinning> {
   @override
   void initState() {
     initializeCamera();
+    initial();
     super.initState();
+  }
+
+  void initial() async {
+    logindata = await SharedPreferences.getInstance();
+    setState(() {
+      token = logindata.getString('token')!;
+    });
   }
 
   @override
@@ -109,14 +123,14 @@ class _SpinningState extends State<Spinning> {
               const SizedBox(
                 height: 100,
               ),
-              Padding(
-                padding: const EdgeInsets.only(left: 280, bottom: 100),
-                child: Text(
-                  'Intentos: $count',
-                  style:
-                      GoogleFonts.bebasNeue(fontSize: 20, color: Colors.white),
-                ),
-              ),
+              // Padding(
+              //   padding: const EdgeInsets.only(left: 280, bottom: 100),
+              //   child: Text(
+              //     'Intentos: $count',
+              //     style:
+              //         GoogleFonts.bebasNeue(fontSize: 20, color: Colors.white),
+              //   ),
+              // ),
               Center(
                 child: Text(
                   'Gira y gana',
@@ -128,8 +142,8 @@ class _SpinningState extends State<Spinning> {
                 height: 20,
               ),
               SizedBox(
-                height: MediaQuery.of(context).size.height - 500,
-                width: MediaQuery.of(context).size.width - 15,
+                height: MediaQuery.of(context).size.height - 300,
+                width: MediaQuery.of(context).size.width - 5,
                 child: FortuneWheel(
                   physics: CircularPanPhysics(
                       curve: Curves.easeInOutCubicEmphasized,
@@ -160,20 +174,13 @@ class _SpinningState extends State<Spinning> {
                     },
                   ],
                   onAnimationEnd: () {
-                    log(imagen);
                     setState(() {
                       rewards = '${items[selected.value]}%';
                       dato = items[selected.value] / 100;
                     });
                     if (validar()) {
-                      Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => Conffeti(
-                                    descuento: rewards,
-                                    desc: desc,
-                                  )),
-                          (route) => false);
+                      loading();
+                      post();
                     }
                   },
                 ),
@@ -189,24 +196,29 @@ class _SpinningState extends State<Spinning> {
                     selected.add(Fortune.randomInt(0, items.length));
                   });
                 },
-                child: Container(
-                  decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      color: Colors.red),
-                  height: 40,
-                  width: 120,
-                  //color: Colors.redAccent,
-                  child: Center(
-                    child: Text(
-                      "Girar",
-                      style: GoogleFonts.bebasNeue(
-                          fontSize: 24, color: Colors.white),
-                    ),
-                  ),
-                ),
+                child: boton(),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget boton() {
+    if (count == 0) {
+      return const Center();
+    }
+    return Container(
+      decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10), color: Colors.red),
+      height: 40,
+      width: 120,
+      //color: Colors.redAccent,
+      child: Center(
+        child: Text(
+          "Girar",
+          style: GoogleFonts.bebasNeue(fontSize: 24, color: Colors.white),
         ),
       ),
     );
@@ -235,19 +247,8 @@ class _SpinningState extends State<Spinning> {
       ).show();
       return false;
     }
-    return true;
-  }
 
-  register() async {
-    var model = Usuario(
-        genero: widget.genero,
-        beneficios: widget.beneficios,
-        canal: widget.captacion,
-        desc: dato,
-        edad: widget.edad,
-        foto: imagen,
-        valoracion: widget.valoracion);
-    await repo.register(model);
+    return true;
   }
 
   // bool attemps() {
@@ -282,18 +283,137 @@ class _SpinningState extends State<Spinning> {
 
   initializeCamera() async {
     _cameras = await availableCameras();
-    _controller = CameraController(_cameras[1], ResolutionPreset.max);
+    _controller = CameraController(_cameras[1], ResolutionPreset.low);
     await _controller.initialize();
     setState(() {});
   }
 
   takePicturex() async {
     XFile xfile = await _controller.takePicture();
-    log(xfile.path);
     Uint8List imagebytes = await xfile.readAsBytes();
     setState(() {
       imagen = base64.encode(imagebytes);
     });
-    log(imagen);
+  }
+
+  post() async {
+    final headers = {HttpHeaders.authorizationHeader: token};
+    if (await internet()) {
+      var res = await http.post(uri, headers: headers, body: {
+        "Genero": widget.genero.toString(),
+        "Edad": widget.edad.toString(),
+        "CanalCaptacion": widget.captacion,
+        "ExplicaronBeneficios": widget.beneficios.toString(),
+        "ValoracionServicio": widget.valoracion.toString(),
+        "Fotografia": imagen,
+        "Descuento": dato.toString()
+      });
+      final body = jsonDecode(res.body);
+      if (res.statusCode == 200) {
+        logindata = await SharedPreferences.getInstance();
+        var date = DateTime.now();
+        var hora = ((date.hour * 60) + (date.minute)) + 15;
+        try {
+          desc = body["Cupon"];
+          setState(() {
+            isCount = true;
+            time = hora;
+            logindata.setInt('horaInicio', hora);
+            logindata.setBool('isCount', isCount);
+            log("descuento: $desc");
+            descuento = desc;
+          });
+        } catch (e) {
+          print("Error: $e");
+        }
+      }
+      if (desc.isNotEmpty) {
+        // ignore: use_build_context_synchronously
+        Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+                builder: (context) => Conffeti(descuento: rewards)),
+            (route) => false);
+      }
+      if (res.statusCode == 400) {
+        error = body["ErrorMessage"];
+        if (error.isNotEmpty) {
+          Alert(
+            context: context,
+            style: const AlertStyle(isCloseButton: false),
+            buttons: [
+              DialogButton(
+                  color: Colors.black,
+                  child: const Text(
+                    "OK",
+                    style: TextStyle(color: Colors.white, fontSize: 20),
+                  ),
+                  onPressed: () {
+                    Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => HomePage(time: 0)),
+                        (route) => false);
+                  })
+            ],
+            title: "Atención",
+            desc: error,
+            image: Image.asset(
+              'assets/triste.png',
+              height: 100,
+            ),
+          ).show();
+        }
+      }
+    }
+  }
+
+  void loading() {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return const Center(
+              child: CircularProgressIndicator(
+            color: Colors.white,
+          ));
+        });
+  }
+
+  Future<bool> internet() async {
+    try {
+      final connection = await InternetAddress.lookup('google.com');
+      if (connection.isNotEmpty && connection[0].rawAddress.isNotEmpty) {
+        return true;
+      }
+    } catch (e) {
+      Alert(
+        context: context,
+        style: const AlertStyle(isCloseButton: false),
+        buttons: [
+          DialogButton(
+              color: Colors.black,
+              child: const Text(
+                "OK",
+                style: TextStyle(color: Colors.white, fontSize: 20),
+              ),
+              onPressed: () => Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => HomePage(
+                            time: 0,
+                          )),
+                  (route) => false))
+        ],
+        title: "Sin conexión",
+        desc: "Necesitas internet para continuar",
+        image: Image.asset(
+          'assets/triste.png',
+          height: 100,
+        ),
+      ).show();
+
+      return false;
+    }
+    return false;
   }
 }

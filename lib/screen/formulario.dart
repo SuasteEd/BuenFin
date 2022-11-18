@@ -1,7 +1,3 @@
-import 'dart:math';
-
-import 'package:demo/models/user.dart';
-import 'package:demo/repository/data_repository.dart';
 import 'package:demo/screen/spinning.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -15,10 +11,6 @@ class Formulario extends StatefulWidget {
 }
 
 class _FormularioState extends State<Formulario> {
-  TextEditingController name = TextEditingController();
-  TextEditingController middleName = TextEditingController();
-  TextEditingController lastName = TextEditingController();
-  Repository repo = Repository();
   bool star1 = false;
   bool star2 = false;
   bool star3 = false;
@@ -81,20 +73,15 @@ class _FormularioState extends State<Formulario> {
               text('¿Te explicaron los beneficios de LTH Enermax?'),
               radioButtonYn(),
               const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 54),
-                child: text('¿Qué tal tu experiencia con el servicio?'),
-              ),
+              text('¿Qué tal tu experiencia con el servicio?'),
               const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 90),
-                child: stars(),
-              ),
+              stars(),
             ],
           ),
           floatingActionButton: FloatingActionButton(
             backgroundColor: Colors.red,
             onPressed: (() {
+              print(range);
               if (validar()) {
                 Alert(
                   context: context,
@@ -307,7 +294,7 @@ class _FormularioState extends State<Formulario> {
 
   Widget radioButton() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 25),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,

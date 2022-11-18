@@ -46,7 +46,7 @@ dependencies:
   camera: ^0.10.0+4
   get: ^4.6.5
   http: ^0.13.5
-  
+  progress_indicators: ^1.0.0   
 
 dev_dependencies:
   flutter_test:

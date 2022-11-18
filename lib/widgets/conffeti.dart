@@ -1,27 +1,37 @@
 import 'dart:math';
-import 'package:demo/repository/data_repository.dart';
-import 'package:demo/screen/calculador.dart';
+import 'package:demo/constants.dart';
+import 'package:demo/screen/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:rflutter_alert/rflutter_alert.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Conffeti extends StatefulWidget {
   late String descuento;
-  late String desc;
-  Conffeti({Key? key, required this.descuento, required this.desc})
-      : super(key: key);
+  Conffeti({Key? key, required this.descuento}) : super(key: key);
   @override
   _ConffetiState createState() => _ConffetiState();
 }
 
 class _ConffetiState extends State<Conffeti> {
+  late SharedPreferences postData;
+  String cupon = '';
+  int ms = 0;
   ConfettiController controller = ConfettiController();
-  Repository repo = Repository();
   @override
   void initState() {
     super.initState();
+    getCupon();
     controller = ConfettiController(duration: const Duration(seconds: 2));
     controller.play();
+  }
+
+  void getCupon() async {
+    final descuento = await SharedPreferences.getInstance();
+    setState(() {
+      cupon = descuento.getString('cupon') ?? "";
+    });
   }
 
   @override
@@ -80,20 +90,10 @@ class _ConffetiState extends State<Conffeti> {
                           fontSize: 50,
                           decoration: TextDecoration.none),
                     ),
-                    Text(
-                      widget.desc,
-                      style: const TextStyle(
-                          color: Colors.yellow,
-                          fontSize: 50,
-                          decoration: TextDecoration.none),
-                    ),
+                    descuen(),
                     GestureDetector(
                       onTap: () {
-                        print(repo.user);
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const Calculador()));
+                        _alert();
                       },
                       child: Padding(
                         padding: const EdgeInsets.only(top: 15),
@@ -122,5 +122,60 @@ class _ConffetiState extends State<Conffeti> {
         ),
       ],
     );
+  }
+
+  Widget descuen() {
+    while (descuento.isNotEmpty) {
+      return Text(
+        descuento,
+        style: const TextStyle(
+            color: Colors.black, fontSize: 30, decoration: TextDecoration.none),
+      );
+    }
+    return const Center(child: CircularProgressIndicator(color: Colors.black));
+  }
+
+  timer() async {
+    postData = await SharedPreferences.getInstance();
+    var date = DateTime.now();
+    var hora = ((date.hour * 60) + (date.minute));
+    var rest = time - hora;
+    ms = rest.abs() * 60000;
+    postData.setInt('horaFinal', ms);
+  }
+
+  _alert() async {
+    timer();
+    Alert(
+      context: context,
+      type: AlertType.warning,
+      style: const AlertStyle(isCloseButton: false),
+      title: 'Confirmación',
+      desc: '¿Desea salir?',
+      buttons: [
+        DialogButton(
+          onPressed: () {
+            setState(() {});
+            Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => HomePage(time: ms)),
+                (route) => false);
+          },
+          color: Colors.black,
+          child: const Text(
+            "Sí",
+            style: TextStyle(color: Colors.white, fontSize: 18),
+          ),
+        ),
+        DialogButton(
+          onPressed: () => Navigator.pop(context),
+          color: Colors.black,
+          child: const Text(
+            "No",
+            style: TextStyle(color: Colors.white, fontSize: 18),
+          ),
+        )
+      ],
+    ).show();
   }
 }
