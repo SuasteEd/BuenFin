@@ -25,7 +25,7 @@ class _LoginState extends State<Login> {
   late bool newUser;
   late SharedPreferences loginData;
   final uri =
-      Uri.parse("https://enersis.azurewebsites.net/api/Auth/Authenticate");
+      Uri.parse("https://enersisuat.azurewebsites.net/api/Auth/Authenticate");
   late double height, widht;
   @override
   void initState() {

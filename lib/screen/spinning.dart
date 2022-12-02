@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
-import 'dart:isolate';
 import 'package:camera/camera.dart';
 import 'package:demo/constants.dart';
 import 'package:demo/screen/home_page.dart';
@@ -39,7 +38,7 @@ class _SpinningState extends State<Spinning> {
   bool isCount = false;
   late SharedPreferences logindata;
   final uri = Uri.parse(
-      'https://enersis.azurewebsites.net/api/Promocion/DinamicaRuleta');
+      'https://enersisuat.azurewebsites.net/api/Promocion/DinamicaRuleta');
   List<CameraDescription> _cameras = [];
   String desc = '';
   String imagen = '';
